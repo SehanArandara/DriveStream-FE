@@ -103,12 +103,45 @@ jobs:
         continue-on-error: true
 
   # ─────────────────────────────
-  # 5. BUILD
+  # 5. SONARCLOUD
+  # ─────────────────────────────
+  sonarcloud:
+    name: 🔎 SonarCloud Analysis
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Tests with Coverage
+        run: npm run test -- --run --coverage
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@v2
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
+          SONAR_ORG: ${{ secrets.SONAR_ORG }}
+
+  # ─────────────────────────────
+  # 6. BUILD
   # ─────────────────────────────
   build:
     name: 🏗️ Build App
     runs-on: ubuntu-latest
-    needs: test
+    needs: sonarcloud
 
     steps:
       - name: Checkout code
@@ -137,14 +170,14 @@ jobs:
           retention-days: 7
 
   # ─────────────────────────────
-  # 6. MANUAL APPROVAL
+  # 7. APPROVAL GATE
   # ─────────────────────────────
   approval:
     name: 🔐 Approval Gate
     runs-on: ubuntu-latest
     needs: build
     environment:
-        name: production
+      name: production
 
     steps:
       - name: Approval Step
@@ -153,23 +186,23 @@ jobs:
       - name: Post Approval Comment
         uses: actions/github-script@v7
         with:
-            script: |
-                const issue_number = context.payload.pull_request?.number;
+          script: |
+            const issue_number = context.payload.pull_request?.number;
 
-                if (!issue_number) {
-                    core.info("No PR found. Skipping comment.");
-                    return;
-                }
+            if (!issue_number) {
+              core.info("No PR found. Skipping comment.");
+              return;
+            }
 
-                github.rest.issues.createComment({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    issue_number: context.issue.number,
-                    body: "✅ Approval granted. Ready for production deployment."
-                })
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number,
+              body: "✅ Approval granted. Ready for production deployment."
+            });
 
   # ─────────────────────────────
-  # 7. DEPLOY (NETLIFY)
+  # 8. DEPLOY
   # ─────────────────────────────
   deploy:
     name: Deploy to Netlify
@@ -190,7 +223,7 @@ jobs:
         run: npm install -g netlify-cli
 
       - name: Deploy to Netlify
-        run: netlify deploy --prod --dir=dist --no-build  
+        run: netlify deploy --prod --dir=dist --no-build
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
