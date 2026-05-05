@@ -11,6 +11,7 @@ const WelcomePortal = () => {
             <span className="tracking-tighter">DriveStream</span>
           </div>
           <p className="text-xl text-slate-500 font-medium">Next-Generation Automotive Service Management</p>
+          <p className="text-xl text-slate-500 font-medium">Test CICD - 3</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
