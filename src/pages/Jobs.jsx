@@ -19,7 +19,7 @@ const STATUS_FLOW = ['Waiting', 'Assigned', 'In-Progress', 'Testing', 'Completed
 const Jobs = () => {
   const [jobs, setJobs] = useState([]);
   const [staff, setStaff] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [activeJob, setActiveJob] = useState(null);
   
   const [showCompleteModal, setShowCompleteModal] = useState(false);

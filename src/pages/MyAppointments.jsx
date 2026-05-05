@@ -34,16 +34,6 @@ const MyAppointments = () => {
     }
   };
 
-  const getStatusColor = (status) => {
-    switch (status.toLowerCase()) {
-      case 'confirmed': return 'badge-success';
-      case 'completed': return 'badge-primary';
-      case 'pending': return 'badge-secondary';
-      case 'cancelled': return 'badge-danger';
-      default: return 'badge-secondary';
-    }
-  };
-
   if (loading) return <div className="p-20 text-center">Loading your history...</div>;
 
   return (
