@@ -36,6 +36,7 @@ jobs:
         run: npm run build
         env:
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
 
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
@@ -44,16 +45,37 @@ jobs:
           path: dist/
           retention-days: 7
 
-  # ─── Job 2: Manual Approval Gate ─────────────────────
+  # ─── Job 2: Manual Approval with Comment ─────────────
   approval:
     name: Waiting for Approval
     runs-on: ubuntu-latest
     needs: ci
-    environment: production
 
     steps:
-      - name: Approval Granted
-        run: echo "Approved! Proceeding to deploy."
+      - name: Request Approval with Comment
+        uses: trstringer/manual-approval@v1
+        with:
+          secret: ${{ github.TOKEN }}
+          approvers: your-github-username       
+          minimum-approvals: 1
+          issue-title: "🚀 Deployment Approval Required"
+          issue-body: |
+            ## Deployment Approval Request
+
+            **Pipeline:** ${{ github.workflow }}
+            **Branch:** ${{ github.ref_name }}
+            **Commit:** ${{ github.sha }}
+            **Triggered by:** ${{ github.actor }}
+
+            ---
+            ### ✅ To Approve
+            Add a comment: `approved` or `approve` or `lgtm`
+
+            ### ❌ To Reject
+            Add a comment: `denied` or `deny` or `reject`
+
+            > Please add your reason in the comment before approving or rejecting.
+          exclude-workflow-initiator-as-approver: false
 
   # ─── Job 3: Deploy to Netlify ────────────────────────
   deploy:
@@ -62,9 +84,6 @@ jobs:
     needs: approval
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
       - name: Download Build Artifact
         uses: actions/download-artifact@v4
         with:
@@ -75,7 +94,7 @@ jobs:
         run: npm install -g netlify-cli
 
       - name: Deploy to Netlify
-        run: netlify deploy --prod --dir=dist --no-build   # ✅ skip Netlify's own build
+        run: netlify deploy --prod --dir=dist --no-build
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
