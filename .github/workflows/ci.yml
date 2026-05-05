@@ -154,6 +154,13 @@ jobs:
         uses: actions/github-script@v7
         with:
             script: |
+                const issue_number = context.payload.pull_request?.number;
+
+                if (!issue_number) {
+                    core.info("No PR found. Skipping comment.");
+                    return;
+                }
+
                 github.rest.issues.createComment({
                     owner: context.repo.owner,
                     repo: context.repo.repo,
