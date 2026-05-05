@@ -111,8 +111,10 @@ jobs:
     needs: test
 
     permissions:
-      security-events: write
-      contents: read
+        actions: read
+        contents: read
+        security-events: write
+
 
     steps:
       - name: Checkout code
