@@ -7,9 +7,9 @@ on:
     branches: [main, develop, cicd-pipeline]
 
 jobs:
-  # ─── Job 1: Test & Build ──────────────────────────────
-  ci:
-    name: Test & Build
+  # ─── Job 1: Install ───────────────────────────────────
+  install:
+    name: 📦 Install Dependencies
     runs-on: ubuntu-latest
 
     steps:
@@ -25,12 +25,85 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ hashFiles('package-lock.json') }}
+
+  # ─── Job 2: Lint ──────────────────────────────────────
+  lint:
+    name: 🔍 Lint
+    runs-on: ubuntu-latest
+    needs: install
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Restore node_modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ hashFiles('package-lock.json') }}
+
+      - name: Run ESLint
+        run: npm run lint
+
+  # ─── Job 3: Test ──────────────────────────────────────
+  test:
+    name: 🧪 Run Tests
+    runs-on: ubuntu-latest
+    needs: install
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Restore node_modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ hashFiles('package-lock.json') }}
+
       - name: Run Tests
         run: npm run test -- --run
 
-      - name: Check Test Coverage
+  # ─── Job 4: Coverage ──────────────────────────────────
+  coverage:
+    name: 📊 Test Coverage
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Restore node_modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ hashFiles('package-lock.json') }}
+
+      - name: Check Coverage
         run: npm run test -- --run --coverage
         continue-on-error: true
+
+  # ─── Job 5: Build ─────────────────────────────────────
+  build:
+    name: 🏗️ Build
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Restore node_modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ hashFiles('package-lock.json') }}
 
       - name: Build
         run: npm run build
@@ -45,18 +118,18 @@ jobs:
           path: dist/
           retention-days: 7
 
-  # ─── Job 2: Manual Approval with Comment ─────────────
+  # ─── Job 6: Approval ──────────────────────────────────
   approval:
-    name: Waiting for Approval
+    name: 🔐 Waiting for Approval
     runs-on: ubuntu-latest
-    needs: ci
+    needs: build
 
     steps:
       - name: Request Approval with Comment
         uses: trstringer/manual-approval@v1
         with:
           secret: ${{ github.TOKEN }}
-          approvers: your-github-username       
+          approvers: NADUNSANDEEPA
           minimum-approvals: 1
           issue-title: "🚀 Deployment Approval Required"
           issue-body: |
@@ -69,17 +142,17 @@ jobs:
 
             ---
             ### ✅ To Approve
-            Add a comment: `approved` or `approve` or `lgtm`
+            Add a comment: `approved`
 
             ### ❌ To Reject
-            Add a comment: `denied` or `deny` or `reject`
+            Add a comment: `denied`
 
-            > Please add your reason in the comment before approving or rejecting.
+            > Please add your reason before approving or rejecting.
           exclude-workflow-initiator-as-approver: false
 
-  # ─── Job 3: Deploy to Netlify ────────────────────────
+  # ─── Job 7: Deploy ────────────────────────────────────
   deploy:
-    name: Deploy to Netlify
+    name: 🚀 Deploy to Netlify
     runs-on: ubuntu-latest
     needs: approval
 
