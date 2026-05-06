@@ -42,7 +42,7 @@ const Register = () => {
       const user = await googleLogin(credentialResponse.credential);
       if (user.role === 'customer') {
         toast.success(`Welcome to DriveStream!`);
-        navigate('/');
+        navigate('/dashboard');
       } else {
         toast.error(`Staff detected. Please use the Staff Portal.`);
         navigate('/staff-login');

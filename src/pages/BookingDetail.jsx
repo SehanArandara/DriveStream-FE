@@ -2,16 +2,28 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../lib/api';
 import { toast } from 'react-hot-toast';
-import { 
-  Calendar, 
-  Clock, 
-  CreditCard, 
-  ChevronLeft, 
-  Car, 
+import {
+  Calendar,
+  Clock,
+  CreditCard,
+  ChevronLeft,
+  Car,
   ShieldCheck,
   CheckCircle,
-  FileText
+  FileText,
+  Wrench,
+  AlertCircle,
+  XCircle
 } from 'lucide-react';
+import { initiatePayHerePayment } from '../lib/payhere';
+
+const STATUS_CONFIG = {
+  Pending:       { label: 'Awaiting Confirmation', color: 'bg-amber-50 text-amber-600 border border-amber-200' },
+  Confirmed:     { label: 'Confirmed',              color: 'bg-emerald-50 text-emerald-600 border border-emerald-200' },
+  'In-Progress': { label: 'In Workshop',            color: 'bg-blue-50 text-blue-600 border border-blue-200' },
+  Completed:     { label: 'Completed',              color: 'bg-slate-100 text-slate-600 border border-slate-200' },
+  Cancelled:     { label: 'Cancelled',              color: 'bg-rose-50 text-rose-600 border border-rose-200' },
+};
 
 const BookingDetail = () => {
   const { id } = useParams();
@@ -37,21 +49,58 @@ const BookingDetail = () => {
 
   if (loading) return <div className="p-20 text-center">Loading Appointment Details...</div>;
 
+  const statusCfg = STATUS_CONFIG[booking.status] || STATUS_CONFIG['Pending'];
+  const isPaid = booking.paymentStatus === 'Paid';
+  const paymentFailed = booking.paymentStatus === 'Failed';
+
   return (
     <div className="dashboard-content animate-fade max-w-4xl mx-auto">
-      <button className="btn-text mb-6" onClick={() => navigate('/my-appointments')}>
+      <button className="btn-text mb-6 flex items-center gap-2 text-slate-500 hover:text-primary transition-colors" onClick={() => navigate('/my-appointments')}>
         <ChevronLeft size={18}/> Back to Appointments
       </button>
+
+      {/* Payment Failed Banner */}
+      {paymentFailed && (
+        <div className="mb-6 p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-center gap-3">
+          <AlertCircle size={20} className="text-rose-500 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-black text-rose-700">Payment Failed</p>
+            <p className="text-xs text-rose-500 mt-0.5">Your last payment attempt was unsuccessful. Please try again.</p>
+          </div>
+          <button
+            className="px-5 py-2.5 bg-rose-500 text-white rounded-xl text-xs font-black hover:bg-rose-600 transition-all flex items-center gap-2"
+            onClick={() => initiatePayHerePayment(booking._id, () => fetchBooking())}
+          >
+            <CreditCard size={14} /> RETRY PAYMENT
+          </button>
+        </div>
+      )}
 
       <div className="flex flex-col md:flex-row gap-6 mb-10">
         <div className="flex-grow">
           <h1 className="text-3xl font-black mb-2">Appointment Details</h1>
-          <p className="text-muted">Reserved on {new Date(booking.date).toLocaleDateString()} for {booking.vehicle?.registrationNumber}</p>
+          <p className="text-muted">Booked on {new Date(booking.createdAt || booking.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} for {booking.vehicle?.registrationNumber}</p>
         </div>
-        <div className="flex items-center">
-            <span className={`badge ${booking.status === 'Confirmed' ? 'badge-success' : 'badge-primary'} p-4 text-lg px-8`}>
-                {booking.status}
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Status Badge */}
+          <span className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest ${statusCfg.color}`}>
+            {statusCfg.label}
+          </span>
+          {/* Payment Badge */}
+          {isPaid && (
+            <span className="px-4 py-2 bg-emerald-500 text-white rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-1.5">
+              <CheckCircle size={13} /> PAID
             </span>
+          )}
+          {/* PAY NOW — only when payment is pending and booking is not cancelled/completed */}
+          {!isPaid && !paymentFailed && booking.status !== 'Cancelled' && booking.status !== 'Completed' && (
+            <button
+              className="px-5 py-2.5 bg-emerald-500 text-white rounded-xl font-black text-xs shadow-lg shadow-emerald-500/20 hover:scale-105 transition-transform flex items-center gap-2"
+              onClick={() => initiatePayHerePayment(booking._id, () => fetchBooking())}
+            >
+              <CreditCard size={16} /> PAY NOW
+            </button>
+          )}
         </div>
       </div>
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../lib/api';
 import { toast } from 'react-hot-toast';
+import { useAuth } from '../context/AuthContext';
 import { 
   FileText, 
   Download, 
@@ -8,10 +9,14 @@ import {
   AlertCircle, 
   Car, 
   CreditCard,
-  ExternalLink
+  ExternalLink,
+  User,
+  Printer
 } from 'lucide-react';
+import { generateInvoicePDF } from '../lib/pdfGenerator';
 
 const Invoices = () => {
+  const { user } = useAuth();
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -30,22 +35,41 @@ const Invoices = () => {
     }
   };
 
+  const markAsPaid = async (id, invoiceNumber) => {
+    const confirm = window.confirm(`Mark Invoice ${invoiceNumber} as PAID? This will update the booking and generate a final receipt.`);
+    if (!confirm) return;
+
+    try {
+      await api.patch(`/invoices/${id}/pay`, { paymentMethod: 'Cash/Counter' });
+      toast.success('Invoice marked as PAID');
+      fetchInvoices();
+    } catch (err) {
+      toast.error('Failed to update invoice status');
+    }
+  };
+
   if (loading) return <div className="p-20 text-center font-bold">Retrieving billing history...</div>;
 
   return (
     <div className="max-w-6xl mx-auto space-y-10 animate-fade pb-20">
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-8">
         <div>
-          <h1 className="text-4xl font-black text-slate-900 tracking-tight">Billing & Invoices</h1>
-          <p className="text-slate-500 font-medium mt-1">History of all services and parts consumed.</p>
+          <h1 className="text-4xl font-black text-slate-900 tracking-tight">
+            {user?.role === 'admin' ? 'Workshop Billing' : 'Billing & Invoices'}
+          </h1>
+          <p className="text-slate-500 font-medium mt-1">
+            {user?.role === 'admin' ? 'Manage and track all customer payments and revenue.' : 'History of all services and parts consumed.'}
+          </p>
         </div>
         <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-5">
           <div className="p-3 bg-primary/5 text-primary rounded-2xl">
             <CreditCard size={24} />
           </div>
           <div>
-            <div className="text-[10px] uppercase font-black text-slate-400 tracking-widest mb-1">Lifetime Spent</div>
-            <div className="text-3xl font-black text-slate-900 tabular-nums">
+            <div className="text-[10px] uppercase font-black text-slate-400 tracking-widest mb-1">
+              {user?.role === 'admin' ? 'Total Revenue' : 'Lifetime Spent'}
+            </div>
+            <div className={`text-3xl font-black tabular-nums ${user?.role === 'admin' ? 'text-emerald-600' : 'text-slate-900'}`}>
               {invoices.reduce((sum, i) => sum + i.grandTotal, 0).toLocaleString()} <span className="text-sm">LKR</span>
             </div>
           </div>
@@ -58,7 +82,9 @@ const Invoices = () => {
             <FileText size={48} />
           </div>
           <h3 className="text-2xl font-black text-slate-900">No invoices yet</h3>
-          <p className="text-slate-500 mt-2 leading-relaxed">Your billing history will appear here once your first service is completed.</p>
+          <p className="text-slate-500 mt-2 leading-relaxed">
+            {user?.role === 'admin' ? 'The workshop billing history is currently empty.' : 'Your billing history will appear here once your first service is completed.'}
+          </p>
         </div>
       ) : (
         <div className="grid gap-6">
@@ -71,9 +97,16 @@ const Invoices = () => {
                   </div>
                   <div>
                     <h3 className="text-2xl font-black text-slate-900 tracking-tight">{inv.invoiceNumber}</h3>
-                    <p className="text-sm text-slate-500 font-bold uppercase tracking-wider mt-1">
-                      {new Date(inv.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} • {inv.vehicle?.registrationNumber}
-                    </p>
+                    <div className="flex flex-col gap-1 mt-1">
+                      <p className="text-sm text-slate-500 font-bold uppercase tracking-wider">
+                        {new Date(inv.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} • {inv.vehicle?.registrationNumber}
+                      </p>
+                      {user?.role === 'admin' && (
+                        <p className="text-[10px] font-black text-primary uppercase tracking-widest flex items-center gap-1.5">
+                          <User size={12} /> {inv.customer?.name || 'Walk-in Customer'}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -93,24 +126,36 @@ const Invoices = () => {
                     <div className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-emerald-50 text-emerald-600 rounded-xl font-black text-[10px] uppercase tracking-widest border border-emerald-100">
                       <CheckCircle size={14}/> Paid
                     </div>
+                  ) : user?.role === 'admin' ? (
+                    <button 
+                      className="flex-1 md:flex-none px-5 py-2.5 bg-primary text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-primary/20 hover:scale-105 transition-all"
+                      onClick={() => markAsPaid(inv._id, inv.invoiceNumber)}
+                    >
+                      MARK AS PAID
+                    </button>
                   ) : (
                     <div className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-rose-50 text-rose-600 rounded-xl font-black text-[10px] uppercase tracking-widest border border-rose-100 animate-pulse">
                       <AlertCircle size={14}/> Pending
                     </div>
                   )}
-                  <button className="w-12 h-12 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:bg-primary/10 hover:text-primary transition-all border border-slate-100">
+                  <button 
+                    className="w-12 h-12 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:bg-primary/10 hover:text-primary transition-all border border-slate-100"
+                    onClick={() => generateInvoicePDF(inv)}
+                    title="Download PDF Invoice"
+                  >
                     <Download size={20} />
                   </button>
                 </div>
               </div>
+
               
               <div className="bg-slate-50/50 px-8 py-4 border-t border-slate-100 flex justify-between items-center">
                  <div className="text-[10px] font-black text-slate-400 flex items-center gap-2 uppercase tracking-widest">
                     <Car size={14} className="text-primary"/> {inv.vehicle?.brand} {inv.vehicle?.model}
                  </div>
-                 <button 
+                  <button 
                   className="inline-flex items-center gap-1.5 text-primary text-[10px] font-black uppercase tracking-widest hover:underline decoration-2 underline-offset-4" 
-                  onClick={() => toast.info('Generating secure PDF...')}
+                  onClick={() => generateInvoicePDF(inv)}
                  >
                     Digital Receipt <ExternalLink size={12}/>
                  </button>
