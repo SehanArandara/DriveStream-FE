@@ -7,7 +7,7 @@ const Sidebar = () => {
   const role = user?.role || 'customer';
 
   const navItems = [
-    { name: 'Dashboard', path: '/', icon: <LayoutDashboard size={18} />, roles: ['customer', 'technician', 'admin'] },
+    { name: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard size={18} />, roles: ['customer', 'technician', 'admin'] },
     { name: 'My Garage', path: '/vehicles', icon: <Car size={18} />, roles: ['customer'] },
     { name: 'Appointments', path: '/my-appointments', icon: <Calendar size={18} />, roles: ['customer'] },
     { name: 'Book Service', path: '/bookings', icon: <Wrench size={18} />, roles: ['customer'] },

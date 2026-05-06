@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import {
   Car, Wrench, ShieldCheck, Star, MapPin, Phone, Mail,
   ChevronRight, CheckCircle, Zap, Award, Users, ArrowRight,
@@ -78,6 +79,7 @@ const FaqItem = ({ q, a }) => {
 
 /* ── main component ── */
 const LandingPage = () => {
+  const { user } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   useScrollReveal();
@@ -102,8 +104,14 @@ const LandingPage = () => {
             ))}
           </ul>
           <div className="ds-nav-cta">
-            <Link to="/login"    className="ds-btn-ghost">Log In</Link>
-            <Link to="/register" className="ds-btn-primary">Get Started <ArrowRight size={16} /></Link>
+            {user ? (
+              <Link to="/dashboard" className="ds-btn-primary">Go to Dashboard <ArrowRight size={16} /></Link>
+            ) : (
+              <>
+                <Link to="/login"    className="ds-btn-ghost">Log In</Link>
+                <Link to="/register" className="ds-btn-primary">Get Started <ArrowRight size={16} /></Link>
+              </>
+            )}
           </div>
           <button className="ds-hamburger" onClick={() => setMenuOpen(!menuOpen)}>
             {menuOpen ? <X size={22} /> : <Menu size={22} />}
@@ -126,12 +134,20 @@ const LandingPage = () => {
             Book services, track real-time repairs, manage your entire vehicle history—all from one intelligent platform built for modern drivers.
           </p>
           <div className="ds-hero-actions">
-            <Link to="/register" className="ds-btn-primary ds-btn-lg">
-              Book a Service <ArrowRight size={18} />
-            </Link>
-            <Link to="/login" className="ds-btn-outline-lg">
-              Customer Login
-            </Link>
+            {user ? (
+              <Link to="/dashboard" className="ds-btn-primary ds-btn-lg">
+                Go to Dashboard <ArrowRight size={18} />
+              </Link>
+            ) : (
+              <>
+                <Link to="/register" className="ds-btn-primary ds-btn-lg">
+                  Book a Service <ArrowRight size={18} />
+                </Link>
+                <Link to="/login" className="ds-btn-outline-lg">
+                  Customer Login
+                </Link>
+              </>
+            )}
           </div>
           <div className="ds-hero-trust">
             <StarRow />

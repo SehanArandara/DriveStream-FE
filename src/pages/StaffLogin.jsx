@@ -25,7 +25,7 @@ const StaffLogin = () => {
       if (user.role === 'admin' || user.role === 'technician') {
         toast.success(`Welcome back, ${user.name}!`);
         // Redirection logic: Admins to Dashboard, Technicians to Jobs
-        const target = user.role === 'admin' ? '/' : '/jobs';
+        const target = user.role === 'admin' ? '/dashboard' : '/jobs';
         navigate(target);
       } else {
         toast.error('Access Denied: This portal is for professional staff only.');

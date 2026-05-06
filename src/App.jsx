@@ -44,7 +44,7 @@ const PrivateRoute = ({ children, roles }) => {
   
   // If roles are specified, check if user has permission
   if (roles && !roles.includes(user.role)) {
-    return <Navigate to="/" />;
+    return <Navigate to="/dashboard" />;
   }
 
   return children;
@@ -158,7 +158,7 @@ function App() {
             </PrivateRoute>
           } />
 
-          <Route path="*" element={<Navigate to="/" />} />
+          <Route path="*" element={<Navigate to="/dashboard" />} />
         </Routes>
         <Toaster position="top-right" />
       </Router>
