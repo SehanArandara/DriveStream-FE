@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   Info
 } from 'lucide-react';
+import { initiatePayHerePayment } from '../lib/payhere';
 
 const Bookings = () => {
   const [step, setStep] = useState(1);
@@ -106,9 +107,14 @@ const Bookings = () => {
         serviceIds: selectedServices.map(s => s._id),
         date: bookingDate
       };
-      await api.post('/bookings', payload);
-      toast.success('Service Booked Successfully!');
-      setStep(4); // Success Landing
+      const { data: booking } = await api.post('/bookings', payload);
+      
+      // Use shared utility
+      await initiatePayHerePayment(
+        booking._id, 
+        () => setStep(4), // onSuccess
+        () => (window.location.href = '/my-appointments') // onCancel
+      );
     } catch (err) {
       toast.error(err.response?.data?.message || 'Booking failed');
     }

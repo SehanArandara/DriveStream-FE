@@ -244,7 +244,7 @@ const Vehicles = () => {
       {/* Add/Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowModal(false)}></div>
+          <div className="absolute inset-0" onClick={() => setShowModal(false)}></div>
           <div className="relative w-full max-w-xl bg-white rounded-[2.5rem] shadow-2xl overflow-hidden animate-scale-in">
             <div className="bg-slate-900 p-8 text-white">
               <h2 className="text-2xl font-black">{editingId ? 'Update Vehicle' : 'Register Vehicle'}</h2>

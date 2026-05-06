@@ -13,7 +13,7 @@ const Sidebar = () => {
     { name: 'Book Service', path: '/bookings', icon: <Wrench size={18} />, roles: ['customer'] },
     { name: 'Billing', path: '/invoices', icon: <CreditCard size={18} />, roles: ['customer', 'admin'] },
     { name: 'Directory', path: '/admin/vehicles', icon: <Search size={18} />, roles: ['admin', 'technician'] },
-    { name: 'Manage Bookings', path: '/admin/bookings', icon: <Calendar size={18} />, roles: ['admin', 'technician'] },
+    { name: 'Manage Bookings', path: '/admin/bookings', icon: <Calendar size={18} />, roles: ['admin'] },
     { name: 'Jobs', path: '/jobs', icon: <Wrench size={18} />, roles: ['admin', 'technician'] },
     { name: 'Staff', path: '/staff', icon: <Users size={18} />, roles: ['admin'] },
     { name: 'Settings', path: '/admin/catalog', icon: <Settings size={18} />, roles: ['admin'] },

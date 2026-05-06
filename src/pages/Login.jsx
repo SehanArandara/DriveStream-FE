@@ -47,7 +47,7 @@ const Login = () => {
     // Strict Role Check for Customer Portal
     if (user.role === 'customer') {
       toast.success(`Welcome back!`);
-      navigate('/');
+      navigate('/dashboard');
     } else {
       toast.error(`Staff detected. Please use the Staff Portal.`);
       navigate('/staff-login');

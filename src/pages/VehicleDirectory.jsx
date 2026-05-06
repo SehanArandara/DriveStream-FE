@@ -42,7 +42,7 @@ const VehicleDirectory = () => {
     setLoading(true);
     try {
       const { data } = await api.get(`/vehicles/search/${searchQuery}`);
-      setVehicles([data]); 
+      setVehicles(data); 
     } catch (err) {
       toast.error(err.response?.data?.message || 'No matches found');
       setVehicles([]);
