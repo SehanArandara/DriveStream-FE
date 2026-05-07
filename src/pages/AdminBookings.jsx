@@ -32,6 +32,7 @@ const AdminBookings = () => {
   const fetchGlobalBookings = async () => {
     try {
       const { data } = await api.get('/bookings/my'); // Using /my but handled by Admin logic for all
+      console.log("all the data", data)
       setBookings(data);
     } catch (err) {
       toast.error('Failed to load global schedule');
@@ -154,8 +155,8 @@ const AdminBookings = () => {
                     <td className="px-8 py-6">
                       <div className="flex flex-col gap-1">
                         <span className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border text-center ${b.status === 'Pending' ? 'bg-amber-50 text-amber-600 border-amber-100' :
-                            b.status === 'Cancelled' ? 'bg-rose-50 text-rose-600 border-rose-100' :
-                              'bg-emerald-50 text-emerald-600 border-emerald-100'
+                          b.status === 'Cancelled' ? 'bg-rose-50 text-rose-600 border-rose-100' :
+                            'bg-emerald-50 text-emerald-600 border-emerald-100'
                           }`}>
                           {b.status}
                         </span>
