@@ -25,6 +25,7 @@ import Jobs from './pages/Jobs';
 import Invoices from './pages/Invoices';
 import PaymentSuccess from './pages/PaymentSuccess';
 import PaymentCancel from './pages/PaymentCancel';
+import CompleteProfile from './pages/CompleteProfile';
 
 // Components
 import Sidebar from './components/Sidebar';
@@ -41,6 +42,12 @@ const PrivateRoute = ({ children, roles }) => {
   );
 
   if (!user) return <Navigate to="/login" />;
+
+  // Enforce Phone & Verification for customers
+  if (user.role === 'customer' && !user.isVerified) {
+    if (!user.phone) return <Navigate to="/complete-profile" />;
+    return <Navigate to="/verify-otp" state={{ userId: user._id, phone: user.phone }} />;
+  }
   
   // If roles are specified, check if user has permission
   if (roles && !roles.includes(user.role)) {
@@ -84,6 +91,7 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/payment-success" element={<PaymentSuccess />} />
           <Route path="/payment-cancel" element={<PaymentCancel />} />
+          <Route path="/complete-profile" element={<CompleteProfile />} />
 
           {/* ── Protected Routes ── */}
           <Route path="/dashboard" element={
