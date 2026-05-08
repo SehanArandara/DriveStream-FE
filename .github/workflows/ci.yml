@@ -57,7 +57,7 @@ jobs:
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
 
   # ─────────────────────────────
-  # NOTIFY (FIXED)
+  # NOTIFY
   # ─────────────────────────────
   notify:
     uses: NADUNSANDEEPA/DriveStream-CommonCICD/.github/workflows/common-notify.yml@main

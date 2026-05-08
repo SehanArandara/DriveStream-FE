@@ -59,6 +59,10 @@ const Login = () => {
     }
   };
 
+   const staffLogin = async () => {
+    navigate('/staff-login');
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-200 p-8">
       <div className="w-full max-w-md p-10 bg-white rounded-2xl shadow-xl border border-slate-100 animate-fade">
@@ -116,7 +120,19 @@ const Login = () => {
             {loading ? 'Logging in...' : 'Login to Account'}
           </button>
         </form>
-
+       <span
+        className="block text-center text-sm text-slate-500 mt-4 cursor-pointer hover:text-blue-600 transition"
+        onClick={staffLogin}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            staffLogin();
+          }
+        }}
+      >
+        Staff Login
+      </span>
         <div className="flex items-center my-8 text-slate-400 text-xs font-bold uppercase tracking-wider before:flex-1 before:border-b before:border-slate-100 after:flex-1 after:border-b after:border-slate-100 before:mr-4 after:ml-4">
           OR
         </div>
