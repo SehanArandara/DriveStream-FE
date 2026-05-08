@@ -14,7 +14,7 @@ const Register = () => {
     phone: '',
   });
   const [loading, setLoading] = useState(false);
-  const { register, googleLogin } = useAuth();
+  const { googleLogin } = useAuth()
   const navigate = useNavigate();
 
   const handleChange = (e) => {

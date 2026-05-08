@@ -22,7 +22,7 @@ const Jobs = () => {
   const navigate = useNavigate();
   const [jobs, setJobs] = useState([]);
   const [staff, setStaff] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [activeJob, setActiveJob] = useState(null);
   const [tab, setTab] = useState('active'); // 'active' | 'history'
   const [showCompleteModal, setShowCompleteModal] = useState(false);

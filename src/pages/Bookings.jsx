@@ -18,7 +18,7 @@ const Bookings = () => {
   const [step, setStep] = useState(1);
   const [vehicles, setVehicles] = useState([]);
   const [services, setServices] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
 
   // Selection States
   const [selectedVehicle, setSelectedVehicle] = useState(null);
