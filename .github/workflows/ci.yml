@@ -330,7 +330,7 @@ jobs:
                     {
                       "type": "Action.OpenUrl",
                       "title": "🌐 Open Live Site",
-                      "url": "https://your-netlify-site.netlify.app"
+                      "url": "https://drivestreams.netlify.app"
                     },
                     {
                       "type": "Action.OpenUrl",
