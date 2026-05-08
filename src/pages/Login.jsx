@@ -34,8 +34,13 @@ const Login = () => {
   const handleGoogleSuccess = async (credentialResponse) => {
     setLoading(true);
     try {
-      const user = await googleLogin(credentialResponse.credential);
-      handlePostLogin(user);
+      const data = await googleLogin(credentialResponse.credential);
+      if (data.needsPhone) {
+        toast.success('Google Login successful!');
+        navigate('/complete-profile');
+      } else {
+        handlePostLogin(data.user);
+      }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Google Login failed');
     } finally {
@@ -47,7 +52,7 @@ const Login = () => {
     // Strict Role Check for Customer Portal
     if (user.role === 'customer') {
       toast.success(`Welcome back!`);
-      navigate('/');
+      navigate('/dashboard');
     } else {
       toast.error(`Staff detected. Please use the Staff Portal.`);
       navigate('/staff-login');

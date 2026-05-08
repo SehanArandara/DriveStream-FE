@@ -11,6 +11,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import StaffLogin from './pages/StaffLogin';
 import StaffManagement from './pages/StaffManagement';
 import WelcomePortal from './pages/WelcomePortal';
+import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
 import Bookings from './pages/Bookings';
 import MyAppointments from './pages/MyAppointments';
@@ -22,21 +23,38 @@ import CatalogManagement from './pages/CatalogManagement';
 import AdminBookings from './pages/AdminBookings';
 import Jobs from './pages/Jobs';
 import Invoices from './pages/Invoices';
+import PaymentSuccess from './pages/PaymentSuccess';
+import PaymentCancel from './pages/PaymentCancel';
+import CompleteProfile from './pages/CompleteProfile';
 
 // Components
 import Sidebar from './components/Sidebar';
 import Navbar from './components/Navbar';
 import ChatBotWidget from './components/ChatBotWidget';
 
-const PrivateRoute = ({ children }) => {
+const PrivateRoute = ({ children, roles }) => {
   const { user, loading } = useAuth();
+  
   if (loading) return (
     <div className="h-screen flex items-center justify-center font-bold text-primary animate-pulse">
       Loading DriveStream...
     </div>
   );
-  // If not logged in, go to the Welcome Portal rather than forced /login
-  return user ? children : <Navigate to="/welcome" />;
+
+  if (!user) return <Navigate to="/login" />;
+
+  // Enforce Phone & Verification for customers
+  if (user.role === 'customer' && !user.isVerified) {
+    if (!user.phone) return <Navigate to="/complete-profile" />;
+    return <Navigate to="/verify-otp" state={{ userId: user._id, phone: user.phone }} />;
+  }
+  
+  // If roles are specified, check if user has permission
+  if (roles && !roles.includes(user.role)) {
+    return <Navigate to="/dashboard" />;
+  }
+
+  return children;
 };
 
 const DashboardLayout = ({ children }) => {
@@ -62,6 +80,8 @@ function App() {
     <AuthProvider>
       <Router>
         <Routes>
+          {/* ── Public Routes ── */}
+          <Route path="/" element={<LandingPage />} />
           <Route path="/welcome" element={<WelcomePortal />} />
           <Route path="/login" element={<Login />} />
           <Route path="/staff-login" element={<StaffLogin />} />
@@ -69,8 +89,12 @@ function App() {
           <Route path="/verify-otp" element={<VerifyOTP />} />
           <Route path="/setup-staff" element={<SetupStaff />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
-          
-          <Route path="/" element={
+          <Route path="/payment-success" element={<PaymentSuccess />} />
+          <Route path="/payment-cancel" element={<PaymentCancel />} />
+          <Route path="/complete-profile" element={<CompleteProfile />} />
+
+          {/* ── Protected Routes ── */}
+          <Route path="/dashboard" element={
             <PrivateRoute>
               <DashboardLayout><Dashboard /></DashboardLayout>
             </PrivateRoute>
@@ -125,7 +149,7 @@ function App() {
           } />
 
           <Route path="/admin/bookings" element={
-            <PrivateRoute roles={['admin', 'technician']}>
+            <PrivateRoute roles={['admin']}>
               <DashboardLayout><AdminBookings /></DashboardLayout>
             </PrivateRoute>
           } />
@@ -142,7 +166,7 @@ function App() {
             </PrivateRoute>
           } />
 
-          <Route path="*" element={<Navigate to="/" />} />
+          <Route path="*" element={<Navigate to="/dashboard" />} />
         </Routes>
         <Toaster position="top-right" />
       </Router>

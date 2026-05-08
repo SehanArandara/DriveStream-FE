@@ -40,6 +40,18 @@ const VerifyOTP = () => {
     }
   };
 
+  const handleResend = async () => {
+    setLoading(true);
+    try {
+      await api.post('/auth/resend-otp', { userId });
+      toast.success('A new verification code has been sent!');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to resend code');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="auth-page">
       <div className="auth-card card animate-fade">
@@ -72,7 +84,7 @@ const VerifyOTP = () => {
         </form>
 
         <p className="auth-footer">
-          Didn't receive a code? <button onClick={() => toast.info('Feature coming soon')} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontWeight: 600, cursor: 'pointer' }}>Resend SMS</button>
+          Didn't receive a code? <button onClick={handleResend} disabled={loading} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontWeight: 600, cursor: 'pointer', opacity: loading ? 0.5 : 1 }}>Resend SMS</button>
         </p>
       </div>
     </div>

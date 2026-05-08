@@ -39,10 +39,13 @@ const Register = () => {
   const handleGoogleSuccess = async (credentialResponse) => {
     setLoading(true);
     try {
-      const user = await googleLogin(credentialResponse.credential);
-      if (user.role === 'customer') {
+      const data = await googleLogin(credentialResponse.credential);
+      if (data.needsPhone) {
+        toast.success(`Google Account linked!`);
+        navigate('/complete-profile');
+      } else if (data.user.role === 'customer') {
         toast.success(`Welcome to DriveStream!`);
-        navigate('/');
+        navigate('/dashboard');
       } else {
         toast.error(`Staff detected. Please use the Staff Portal.`);
         navigate('/staff-login');
