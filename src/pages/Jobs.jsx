@@ -8,7 +8,7 @@ import {
   Play, CheckCircle, Clock, Phone, User, Wrench,
   ChevronRight, History, Calendar, AlertCircle, Car
 } from 'lucide-react';
-
+ 
 const JOB_STATUS_COLOR = {
   Waiting:     'bg-slate-100 text-slate-500',
   Assigned:    'bg-amber-50 text-amber-600 border border-amber-200',
@@ -16,21 +16,21 @@ const JOB_STATUS_COLOR = {
   Testing:     'bg-violet-50 text-violet-600 border border-violet-200',
   Completed:   'bg-emerald-50 text-emerald-600 border border-emerald-200',
 };
-
+ 
 const Jobs = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [jobs, setJobs] = useState([]);
   const [staff, setStaff] = useState([]);
-  const [, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [activeJob, setActiveJob] = useState(null);
   const [tab, setTab] = useState('active'); // 'active' | 'history'
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [finishForm, setFinishForm] = useState({ technicalRemarks: '', nextServiceDate: '' });
   const [elapsed, setElapsed] = useState({});
-
+ 
   useEffect(() => { fetchJobs(); fetchStaff(); }, []);
-
+ 
   // Live timer for in-progress jobs
   useEffect(() => {
     const timer = setInterval(() => {
@@ -45,7 +45,7 @@ const Jobs = () => {
     }, 1000);
     return () => clearInterval(timer);
   }, [jobs]);
-
+ 
   const fetchJobs = async () => {
     try {
       const { data } = await api.get('/jobs');
@@ -56,14 +56,14 @@ const Jobs = () => {
       setLoading(false);
     }
   };
-
+ 
   const fetchStaff = async () => {
     try {
       const { data } = await api.get('/staff');
       setStaff((data.staff || data).filter(s => s.role === 'technician'));
     } catch (err) { console.log('Staff fetch error'); }
   };
-
+ 
   const startTimer = async (jobId, e) => {
     e.stopPropagation();
     try {
@@ -72,7 +72,7 @@ const Jobs = () => {
       fetchJobs();
     } catch (err) { toast.error(err.response?.data?.message || 'Failed to start timer'); }
   };
-
+ 
   const handleAssign = async (jobId, technicianId) => {
     if (!technicianId) return;
     try {
@@ -81,7 +81,7 @@ const Jobs = () => {
       fetchJobs();
     } catch (err) { toast.error('Failed to assign'); }
   };
-
+ 
   const handleCompleteSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -93,7 +93,7 @@ const Jobs = () => {
       fetchJobs();
     } catch (err) { toast.error('Error finalizing job'); }
   };
-
+ 
   const updateTaskStatus = async (jobId, taskId, status) => {
     try {
       const { data } = await api.patch(`/jobs/${jobId}/tasks/${taskId}`, { status });
@@ -102,13 +102,13 @@ const Jobs = () => {
       toast.success(`Task marked as ${status}`);
     } catch (err) { toast.error('Failed to update task'); }
   };
-
+ 
   const activeJobs = jobs.filter(j => j.status !== 'Completed');
   const historyJobs = jobs.filter(j => j.status === 'Completed');
   const displayJobs = tab === 'active' ? activeJobs : historyJobs;
-
+ 
   if (loading) return <div className="p-20 text-center text-slate-400 font-black uppercase tracking-widest">Loading Workshop...</div>;
-
+ 
   return (
     <div className="max-w-7xl mx-auto space-y-8 animate-fade pb-20">
       {/* Header */}
@@ -130,7 +130,7 @@ const Jobs = () => {
           </div>
         </div>
       </header>
-
+ 
       {/* Tab Bar */}
       <div className="flex bg-white border border-slate-100 rounded-2xl p-1.5 shadow-sm w-fit gap-1">
         {[['active', 'Active Jobs', Wrench], ['history', 'Job History', History]].map(([key, label, Icon]) => (
@@ -145,7 +145,7 @@ const Jobs = () => {
           </button>
         ))}
       </div>
-
+ 
       {/* Main Grid */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
         {/* Job List */}
@@ -179,7 +179,7 @@ const Jobs = () => {
                     job.status === 'In-Progress' ? 'bg-white/20 text-white' : 'bg-white/10 text-slate-400'
                   }`}>{job.status}</div>
                 </div>
-
+ 
                 <div className="flex-1">
                   <div className="flex flex-wrap items-center gap-2 mb-1">
                     <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest ${JOB_STATUS_COLOR[job.status] || ''}`}>
@@ -195,7 +195,7 @@ const Jobs = () => {
                   <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">
                     Job #{job.jobNumber || job._id.substr(-6).toUpperCase()} • {job.tasks?.length || 0} Services
                   </p>
-
+ 
                   {job.status === 'In-Progress' && (
                     <div className="flex items-center gap-2 text-blue-600 font-black mt-2 text-xs">
                       <div className="w-2 h-2 rounded-full bg-blue-500 animate-ping" />
@@ -209,7 +209,7 @@ const Jobs = () => {
                   )}
                 </div>
               </div>
-
+ 
               {/* Action Buttons */}
               <div className="flex gap-2 w-full md:w-auto" onClick={e => e.stopPropagation()}>
                 {job.status === 'Waiting' && user?.role === 'admin' && (
@@ -268,7 +268,7 @@ const Jobs = () => {
             </div>
           ))}
         </div>
-
+ 
         {/* Detail Panel */}
         <div className="xl:col-span-4">
           {activeJob ? (
@@ -279,7 +279,7 @@ const Jobs = () => {
                   {activeJob.status}
                 </span>
               </div>
-
+ 
               {/* Vehicle Info */}
               <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
                 <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Vehicle</div>
@@ -293,14 +293,14 @@ const Jobs = () => {
                   </div>
                 </div>
               </div>
-
+ 
               {/* Customer Info */}
               <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
                 <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Customer</div>
                 <div className="font-black text-slate-900 flex items-center gap-2 mb-1"><User size={14} className="text-primary" /> {activeJob.customer?.name}</div>
                 <div className="text-xs font-black text-slate-500 flex items-center gap-2"><Phone size={12} className="text-primary" /> {activeJob.customer?.phone}</div>
               </div>
-
+ 
               {/* Task Checklist — for active jobs */}
               {(activeJob.status === 'Assigned' || activeJob.status === 'In-Progress') && activeJob.tasks?.length > 0 && (
                 <div>
@@ -353,7 +353,7 @@ const Jobs = () => {
                   </div>
                 </div>
               )}
-
+ 
               {/* Completed job summary */}
               {activeJob.status === 'Completed' && (
                 <div className="space-y-3">
@@ -396,7 +396,7 @@ const Jobs = () => {
                   </button>
                 </div>
               )}
-
+ 
               {/* Timeline */}
               <div>
                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-4">Event Log</label>
@@ -427,7 +427,7 @@ const Jobs = () => {
           )}
         </div>
       </div>
-
+ 
       {/* Complete Modal — rendered via Portal */}
       {showCompleteModal && activeJob && createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -437,7 +437,7 @@ const Jobs = () => {
               <h2 className="text-2xl font-black">Finalize Job</h2>
               <p className="text-slate-400 text-sm mt-1">Add your remarks and generate the final invoice.</p>
             </div>
-
+ 
             <form onSubmit={handleCompleteSubmit} className="p-8 space-y-6">
               <div className="space-y-2">
                 <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Technical Remarks</label>
@@ -450,7 +450,7 @@ const Jobs = () => {
                   onChange={e => setFinishForm({ ...finishForm, technicalRemarks: e.target.value })}
                 />
               </div>
-
+ 
               <div className="space-y-2">
                 <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Next Service Recommendation</label>
                 <input
@@ -461,12 +461,12 @@ const Jobs = () => {
                   onChange={e => setFinishForm({ ...finishForm, nextServiceDate: e.target.value })}
                 />
               </div>
-
+ 
               <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100 flex items-center gap-3">
                 <CheckCircle className="text-emerald-500 flex-shrink-0" size={20} />
                 <p className="text-[10px] font-black text-emerald-700 uppercase tracking-tight">Invoice will be auto-generated and customer will be notified via SMS.</p>
               </div>
-
+ 
               <div className="flex justify-end gap-3 pt-4 border-t border-slate-50">
                 <button type="button" className="px-6 py-3 font-black text-slate-400 hover:text-slate-700 transition-colors text-sm" onClick={() => setShowCompleteModal(false)}>CANCEL</button>
                 <button type="submit" className="px-10 py-3 bg-emerald-500 text-white rounded-2xl font-black shadow-xl shadow-emerald-500/20 hover:scale-105 transition-transform text-sm uppercase">COMPLETE & INVOICE</button>
@@ -479,5 +479,5 @@ const Jobs = () => {
     </div>
   );
 };
-
+ 
 export default Jobs;
