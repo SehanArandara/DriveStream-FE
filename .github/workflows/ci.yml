@@ -1,4 +1,4 @@
-name: React CI/CD Pipeline
+name: 🚀 DriveStream CI/CD Pipeline - Frontend
 
 on:
   push:
@@ -6,10 +6,17 @@ on:
   pull_request:
     branches: [main, develop, cicd-pipeline]
 
+# ─────────────────────────────
+# GLOBAL CACHE CONFIG IDEA
+# ─────────────────────────────
+env:
+  NODE_ENV: production
+
 jobs:
-  # ─────────────────────────────
-  # 1. INSTALL
-  # ─────────────────────────────
+
+# ─────────────────────────────
+# 1. INSTALL (FAST + CACHED)
+# ─────────────────────────────
   install:
     name: 📦 Install Dependencies
     runs-on: ubuntu-latest
@@ -21,45 +28,47 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 24
-          cache: "npm"
+          node-version: 20
+          cache: npm
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Install dependencies (optimized)
+        run: npm ci --prefer-offline --no-audit --no-fund
 
       - name: Cache node_modules
-        uses: actions/cache/save@v4
+        uses: actions/cache@v4
         with:
           path: node_modules
           key: node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            node-modules-${{ runner.os }}-
 
-  # ─────────────────────────────
-  # 2. LINT (NON-BLOCKING)
-  # ─────────────────────────────
+# ─────────────────────────────
+# 2. LINT (FAST - PARALLEL READY)
+# ─────────────────────────────
   lint:
-    name: 🔍 Lint
+    name: 🔍 Lint Check
     runs-on: ubuntu-latest
     needs: install
+    continue-on-error: true
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Restore node_modules
-        uses: actions/cache/restore@v4
+      - name: Restore cache
+        uses: actions/cache@v4
         with:
           path: node_modules
           key: node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
       - name: Run ESLint
-        run: npm run lint
-        continue-on-error: true
+        run: npm run lint || true
 
-  # ─────────────────────────────
-  # 3. TEST + COVERAGE
-  # ─────────────────────────────
+# ─────────────────────────────
+# 3. TEST (FAST + PARALLEL READY)
+# ─────────────────────────────
   test:
-    name: 🧪 Test & 📊 Coverage
+    name: 🧪 Tests & Coverage
     runs-on: ubuntu-latest
     needs: install
 
@@ -67,22 +76,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Restore node_modules
-        uses: actions/cache/restore@v4
+      - name: Restore cache
+        uses: actions/cache@v4
         with:
           path: node_modules
           key: node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
-      - name: Run Tests
+      - name: Run tests
         run: npm run test -- --run
 
-      - name: Run Coverage
+      - name: Coverage (non-blocking)
         run: npm run test -- --run --coverage
         continue-on-error: true
 
-  # ─────────────────────────────
-  # 4. BUILD
-  # ─────────────────────────────
+# ─────────────────────────────
+# 4. BUILD (DEPENDS ON LINT + TEST)
+# ─────────────────────────────
   build:
     name: 🏗️ Build App
     runs-on: ubuntu-latest
@@ -92,8 +101,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Restore node_modules
-        uses: actions/cache/restore@v4
+      - name: Restore cache
+        uses: actions/cache@v4
         with:
           path: node_modules
           key: node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
@@ -104,26 +113,27 @@ jobs:
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
 
-      - name: Upload Build Artifact
+      - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: build-output
+          name: frontend-build
           path: dist/
-          retention-days: 7
+          retention-days: 5
 
-  # ─────────────────────────────
-  # 5. DOCKER BUILD & PUSH
-  # ─────────────────────────────
+# ─────────────────────────────
+# 5. DOCKER (ONLY MAIN BRANCH)
+# ─────────────────────────────
   docker:
     name: 🐳 Docker Build & Push
     runs-on: ubuntu-latest
     needs: build
+    if: github.ref == 'refs/heads/main'
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
+      - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Login to Docker Hub
@@ -132,207 +142,79 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Extract metadata for Docker
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ secrets.DOCKER_USERNAME }}/drivestream-fe
-          tags: |
-            type=ref,event=branch
-            type=sha,prefix=sha-
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
-
-      - name: Build and Push Docker Image
+      - name: Build & Push Image
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ secrets.DOCKER_USERNAME }}/drivestream-fe:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          build-args: |
-            VITE_API_URL=${{ secrets.VITE_API_URL }}
-            VITE_GOOGLE_CLIENT_ID=${{ secrets.VITE_GOOGLE_CLIENT_ID }}
 
-  # ─────────────────────────────
-  # 6. MANUAL APPROVAL
-  # ─────────────────────────────
+# ─────────────────────────────
+# 6. APPROVAL GATE
+# ─────────────────────────────
   approval:
     name: 🔐 Approval Gate
     runs-on: ubuntu-latest
     needs: docker
+    if: github.ref == 'refs/heads/main'
     environment:
       name: production
 
     steps:
-      - name: Approval Granted
-        run: echo "Approved. Ready for deployment."
+      - name: Approval
+        run: echo "Production approved"
 
-      - name: Post Approval Comment
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const issue_number = context.payload.pull_request?.number;
-            if (!issue_number) {
-              core.info("No PR found. Skipping comment.");
-              return;
-            }
-            github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: issue_number,
-              body: "✅ Approval granted. Ready for production deployment."
-            })
-
-  # ─────────────────────────────
-  # 7. DEPLOY
-  # ─────────────────────────────
+# ─────────────────────────────
+# 7. DEPLOY (NETLIFY)
+# ─────────────────────────────
   deploy:
     name: 🚀 Deploy to Netlify
     runs-on: ubuntu-latest
     needs: approval
+    if: github.ref == 'refs/heads/main'
 
     steps:
-      - name: Download Build Artifact
+      - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
-          name: build-output
+          name: frontend-build
           path: dist/
 
-      - name: Install Netlify CLI
-        run: npm install -g netlify-cli
-
-      - name: Deploy to Netlify
-        run: netlify deploy --prod --dir=dist --no-build
+      - name: Deploy (no install CLI needed)
+        run: npx netlify deploy --prod --dir=dist --no-build
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
 
-
-  # ─────────────────────────────
-  # 8. NOTIFY TEAMS
-  # ─────────────────────────────
+# ─────────────────────────────
+# 8. NOTIFY TEAMS (FAST)
+# ─────────────────────────────
   notify:
     name: 📢 Notify Teams
     runs-on: ubuntu-latest
-    needs:
-      - install
-      - lint
-      - test
-      - build
-      - docker
-      - approval
-      - deploy
-
+    needs: [deploy]
     if: always()
 
     steps:
-      - name: Set Deployment Status
+      - name: Generate status
         id: status
         run: |
           if [ "${{ needs.deploy.result }}" == "success" ]; then
             echo "emoji=✅" >> $GITHUB_OUTPUT
-            echo "title=Frontend - DriveStream Deployment Successful" >> $GITHUB_OUTPUT
             echo "status=SUCCESS" >> $GITHUB_OUTPUT
-            echo "message=DriveStream frontend deployed successfully to production." >> $GITHUB_OUTPUT
+            echo "message=Frontend deployed successfully" >> $GITHUB_OUTPUT
           else
             echo "emoji=❌" >> $GITHUB_OUTPUT
-            echo "title=Frontend - DriveStream Deployment Failed" >> $GITHUB_OUTPUT
             echo "status=FAILED" >> $GITHUB_OUTPUT
-            echo "message=Frontend deployment failed. Check logs immediately." >> $GITHUB_OUTPUT
+            echo "message=Deployment failed" >> $GITHUB_OUTPUT
           fi
 
-      - name: Generate Metadata
-        id: meta
-        run: |
-          echo "short_sha=$(echo '${{ github.sha }}' | cut -c1-7)" >> $GITHUB_OUTPUT
-          echo "sl_time=$(TZ='Asia/Colombo' date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_OUTPUT
-          echo "workflow_url=https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> $GITHUB_OUTPUT
-          echo "commit_url=https://github.com/${{ github.repository }}/commit/${{ github.sha }}" >> $GITHUB_OUTPUT
-
-      - name: Send Teams Adaptive Card
+      - name: Send Teams Notification
         run: |
           curl -X POST "${{ secrets.TEAMS_WEBHOOK_URL }}" \
           -H "Content-Type: application/json" \
           -d "{
-            \"type\": \"message\",
-            \"attachments\": [
-              {
-                \"contentType\": \"application/vnd.microsoft.card.adaptive\",
-                \"content\": {
-                  \"$schema\": \"http://adaptivecards.io/schemas/adaptive-card.json\",
-                  \"type\": \"AdaptiveCard\",
-                  \"version\": \"1.4\",
-                  \"body\": [
-
-                    {
-                      \"type\": \"TextBlock\",
-                      \"text\": \"${{ steps.status.outputs.emoji }} ${{ steps.status.outputs.title }}\",
-                      \"weight\": \"Bolder\",
-                      \"size\": \"Large\",
-                      \"wrap\": true
-                    },
-
-                    {
-                      \"type\": \"TextBlock\",
-                      \"text\": \"${{ steps.status.outputs.message }}\",
-                      \"wrap\": true,
-                      \"isSubtle\": true
-                    },
-
-                    {
-                      \"type\": \"FactSet\",
-                      \"facts\": [
-                        {
-                          \"title\": \"📦 Repository\",
-                          \"value\": \"${{ github.repository }}\"
-                        },
-                        {
-                          \"title\": \"🌿 Branch\",
-                          \"value\": \"${{ github.ref_name }}\"
-                        },
-                        {
-                          \"title\": \"👤 Triggered By\",
-                          \"value\": \"${{ github.actor }}\"
-                        },
-                        {
-                          \"title\": \"🔄 Workflow\",
-                          \"value\": \"${{ github.workflow }}\"
-                        },
-                        {
-                          \"title\": \"🆔 Run\",
-                          \"value\": \"#${{ github.run_number }}\"
-                        },
-                        {
-                          \"title\": \"🔖 Commit\",
-                          \"value\": \"${{ steps.meta.outputs.short_sha }}\"
-                        },
-                        {
-                          \"title\": \"🚀 Status\",
-                          \"value\": \"${{ steps.status.outputs.status }}\"
-                        },
-                        {
-                          \"title\": \"🕐 Time\",
-                          \"value\": \"${{ steps.meta.outputs.sl_time }}\"
-                        }
-                      ]
-                    }
-
-                  ],
-                  \"actions\": [
-                    {
-                      \"type\": \"Action.OpenUrl\",
-                      \"title\": \"🔍 Workflow\",
-                      \"url\": \"${{ steps.meta.outputs.workflow_url }}\"
-                    },
-                    {
-                      \"type\": \"Action.OpenUrl\",
-                      \"title\": \"📂 Commit\",
-                      \"url\": \"${{ steps.meta.outputs.commit_url }}\"
-                    }
-                  ]
-                }
-              }
-            ]
+            \"text\": \"${{ steps.status.outputs.emoji }} DriveStream Frontend: ${{ steps.status.outputs.status }} - ${{ steps.status.outputs.message }}\"
           }"
