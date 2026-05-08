@@ -1,35 +1,30 @@
-name: 🚀 React CI/CD Pipeline
+name: React CI/CD Pipeline
 
 on:
   push:
     branches: [main, develop, cicd-pipeline]
-
   pull_request:
     branches: [main, develop, cicd-pipeline]
 
-env:
-  IMAGE_NAME: drivestream-fe
-
 jobs:
-
   # ─────────────────────────────
-  # 1. INSTALL DEPENDENCIES
+  # 1. INSTALL
   # ─────────────────────────────
   install:
     name: 📦 Install Dependencies
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
+          node-version: 24
+          cache: "npm"
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: npm install
 
       - name: Cache node_modules
@@ -39,16 +34,15 @@ jobs:
           key: node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
   # ─────────────────────────────
-  # 2. LINT CHECK
+  # 2. LINT (NON-BLOCKING)
   # ─────────────────────────────
   lint:
-    name: 🔍 ESLint Check
+    name: 🔍 Lint
     runs-on: ubuntu-latest
     needs: install
-    continue-on-error: true
 
     steps:
-      - name: Checkout Code
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Restore node_modules
@@ -58,19 +52,19 @@ jobs:
           key: node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
       - name: Run ESLint
-        run: |
-          npm run lint || echo "Lint issues found but pipeline continues"
+        run: npm run lint
+        continue-on-error: true
 
   # ─────────────────────────────
-  # 3. TESTS + COVERAGE
+  # 3. TEST + COVERAGE
   # ─────────────────────────────
   test:
-    name: 🧪 Run Tests
+    name: 🧪 Test & 📊 Coverage
     runs-on: ubuntu-latest
     needs: install
 
     steps:
-      - name: Checkout Code
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Restore node_modules
@@ -79,24 +73,23 @@ jobs:
           path: node_modules
           key: node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
-      - name: Execute Tests
-        run: |
-          npm run test -- --run || echo "Tests skipped"
+      - name: Run Tests
+        run: npm run test -- --run
 
-      - name: Generate Coverage
-        run: |
-          npm run test -- --run --coverage || echo "Coverage skipped"
+      - name: Run Coverage
+        run: npm run test -- --run --coverage
+        continue-on-error: true
 
   # ─────────────────────────────
-  # 4. BUILD APPLICATION
+  # 4. BUILD
   # ─────────────────────────────
   build:
-    name: 🏗️ Build React App
+    name: 🏗️ Build App
     runs-on: ubuntu-latest
     needs: [lint, test]
 
     steps:
-      - name: Checkout Code
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Restore node_modules
@@ -105,7 +98,7 @@ jobs:
           path: node_modules
           key: node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
-      - name: Build Project
+      - name: Build project
         run: npm run build
         env:
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
@@ -127,29 +120,29 @@ jobs:
     needs: build
 
     steps:
-      - name: Checkout Code
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Docker Buildx
+      - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Docker Hub Login
+      - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Generate Docker Metadata
+      - name: Extract metadata for Docker
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}
+          images: ${{ secrets.DOCKER_USERNAME }}/drivestream-fe
           tags: |
             type=ref,event=branch
             type=sha,prefix=sha-
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
-      - name: Build & Push Docker Image
+      - name: Build and Push Docker Image
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -166,37 +159,34 @@ jobs:
   # 6. MANUAL APPROVAL
   # ─────────────────────────────
   approval:
-    name: 🔐 Production Approval
+    name: 🔐 Approval Gate
     runs-on: ubuntu-latest
     needs: docker
-
     environment:
       name: production
 
     steps:
-      - name: ✅ Approval Granted
-        run: echo "Deployment approved"
+      - name: Approval Granted
+        run: echo "Approved. Ready for deployment."
 
-      - name: 💬 Add PR Comment
+      - name: Post Approval Comment
         uses: actions/github-script@v7
         with:
           script: |
             const issue_number = context.payload.pull_request?.number;
-
             if (!issue_number) {
               core.info("No PR found. Skipping comment.");
               return;
             }
-
             github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: issue_number,
-              body: "✅ Production deployment approved."
-            });
+              body: "✅ Approval granted. Ready for production deployment."
+            })
 
   # ─────────────────────────────
-  # 7. DEPLOY TO NETLIFY
+  # 7. DEPLOY
   # ─────────────────────────────
   deploy:
     name: 🚀 Deploy to Netlify
@@ -213,19 +203,19 @@ jobs:
       - name: Install Netlify CLI
         run: npm install -g netlify-cli
 
-      - name: Deploy Application
+      - name: Deploy to Netlify
         run: netlify deploy --prod --dir=dist --no-build
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
 
-  # ─────────────────────────────
+
+ # ─────────────────────────────
   # 8. MICROSOFT TEAMS NOTIFICATION
   # ─────────────────────────────
   notify-teams:
     name: 📢 Notify Teams Channel
     runs-on: ubuntu-latest
-
     needs:
       - install
       - lint
@@ -238,104 +228,101 @@ jobs:
     if: always()
 
     steps:
-      - name: 📊 Prepare Notification Data
-        id: status
-        run: |
-
-          if [[ "${{ needs.deploy.result }}" == "success" ]]; then
-            echo "STATUS=SUCCESS" >> $GITHUB_ENV
-            echo "ICON=✅" >> $GITHUB_ENV
-            echo "COLOR=00FF00" >> $GITHUB_ENV
-            echo "MESSAGE=DriveStream deployed successfully to production." >> $GITHUB_ENV
-          else
-            echo "STATUS=FAILED" >> $GITHUB_ENV
-            echo "ICON=❌" >> $GITHUB_ENV
-            echo "COLOR=FF0000" >> $GITHUB_ENV
-            echo "MESSAGE=DriveStream deployment failed." >> $GITHUB_ENV
-          fi
-
-          echo "SHORT_SHA=$(echo '${{ github.sha }}' | cut -c1-7)" >> $GITHUB_ENV
-          echo "DATE=$(TZ='Asia/Colombo' date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
-
-      - name: 📢 Send Teams Notification
+      - name: Send Teams Notification
         env:
           TEAMS_WEBHOOK: ${{ secrets.TEAMS_WEBHOOK_URL }}
         run: |
 
+          # ─────────────────────────────
+          # PIPELINE STATUS
+          # ─────────────────────────────
+          if [[ "${{ needs.deploy.result }}" == "success" ]]; then
+            STATUS="SUCCESS"
+            COLOR="00FF00"
+            ICON="✅"
+          else
+            STATUS="FAILED"
+            COLOR="FF0000"
+            ICON="❌"
+          fi
+
+          # ─────────────────────────────
+          # BUILD DETAILS
+          # ─────────────────────────────
           REPO="${{ github.repository }}"
           BRANCH="${{ github.ref_name }}"
           ACTOR="${{ github.actor }}"
+          COMMIT_MESSAGE="${{ github.event.head_commit.message }}"
+          COMMIT_SHA="${{ github.sha }}"
+          SHORT_SHA=$(echo $COMMIT_SHA | cut -c1-7)
+
           WORKFLOW="${{ github.workflow }}"
           RUN_NUMBER="${{ github.run_number }}"
           RUN_ID="${{ github.run_id }}"
 
-          WORKFLOW_URL="https://github.com/${REPO}/actions/runs/${RUN_ID}"
-          COMMIT_URL="https://github.com/${REPO}/commit/${{ github.sha }}"
+          IMAGE="${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest"
 
+          WORKFLOW_URL="https://github.com/${REPO}/actions/runs/${RUN_ID}"
+          COMMIT_URL="https://github.com/${REPO}/commit/${COMMIT_SHA}"
+
+          DATE=$(date)
+
+          # ─────────────────────────────
+          # TEAMS MESSAGE PAYLOAD
+          # ─────────────────────────────
           curl -H "Content-Type: application/json" \
           -d "{
             \"@type\": \"MessageCard\",
             \"@context\": \"https://schema.org/extensions\",
             \"themeColor\": \"$COLOR\",
-            \"summary\": \"React CI/CD Pipeline\",
+            \"summary\": \"DriveStream CI/CD Pipeline\",
 
             \"sections\": [
               {
-                \"activityTitle\": \"$ICON React CI/CD Pipeline $STATUS\",
-                \"activitySubtitle\": \"$MESSAGE\",
+                \"activityTitle\": \"$ICON DriveStream Deployment $STATUS\",
+                \"activitySubtitle\": \"GitHub Actions CI/CD Notification\",
 
                 \"facts\": [
-
                   {
                     \"name\": \"📦 Repository\",
                     \"value\": \"$REPO\"
                   },
-
                   {
                     \"name\": \"🌿 Branch\",
                     \"value\": \"$BRANCH\"
                   },
-
                   {
                     \"name\": \"👤 Triggered By\",
                     \"value\": \"$ACTOR\"
                   },
-
                   {
                     \"name\": \"🔄 Workflow\",
                     \"value\": \"$WORKFLOW\"
                   },
-
                   {
-                    \"name\": \"🔢 Run Number\",
+                    \"name\": \"🆔 Run Number\",
                     \"value\": \"#$RUN_NUMBER\"
                   },
-
                   {
                     \"name\": \"🐳 Docker Image\",
-                    \"value\": \"${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest\"
+                    \"value\": \"$IMAGE\"
                   },
-
-                  {
-                    \"name\": \"📝 Commit Message\",
-                    \"value\": \"${{ github.event.head_commit.message }}\"
-                  },
-
-                  {
-                    \"name\": \"🔖 Commit SHA\",
-                    \"value\": \"$SHORT_SHA\"
-                  },
-
                   {
                     \"name\": \"🚀 Environment\",
                     \"value\": \"Production\"
                   },
-
                   {
-                    \"name\": \"🕐 Sri Lanka Time\",
+                    \"name\": \"📝 Commit\",
+                    \"value\": \"$COMMIT_MESSAGE\"
+                  },
+                  {
+                    \"name\": \"🔖 Commit SHA\",
+                    \"value\": \"$SHORT_SHA\"
+                  },
+                  {
+                    \"name\": \"⏰ Time\",
                     \"value\": \"$DATE\"
                   }
-
                 ],
 
                 \"markdown\": true
@@ -343,10 +330,9 @@ jobs:
             ],
 
             \"potentialAction\": [
-
               {
                 \"@type\": \"OpenUri\",
-                \"name\": \"🔍 View Workflow Logs\",
+                \"name\": \"🔍 View Workflow\",
                 \"targets\": [
                   {
                     \"os\": \"default\",
@@ -354,21 +340,9 @@ jobs:
                   }
                 ]
               },
-
               {
                 \"@type\": \"OpenUri\",
-                \"name\": \"🌐 Open Live Application\",
-                \"targets\": [
-                  {
-                    \"os\": \"default\",
-                    \"uri\": \"https://drivestreams.netlify.app\"
-                  }
-                ]
-              },
-
-              {
-                \"@type\": \"OpenUri\",
-                \"name\": \"📂 View Commit\",
+                \"name\": \"📝 View Commit\",
                 \"targets\": [
                   {
                     \"os\": \"default\",
@@ -376,7 +350,6 @@ jobs:
                   }
                 ]
               }
-
             ]
           }" \
           $TEAMS_WEBHOOK
