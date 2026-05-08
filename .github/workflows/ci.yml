@@ -14,7 +14,7 @@ concurrency:
 jobs:
 
   # ─────────────────────────────
-  # 1. COMMON CI PIPELINE
+  # CI PIPELINE
   # ─────────────────────────────
   ci:
     uses: NADUNSANDEEPA/DriveStream-CommonCICD/.github/workflows/common.yml@main
@@ -30,7 +30,7 @@ jobs:
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
   # ─────────────────────────────
-  # 2. DEPLOY FRONTEND
+  # DEPLOY
   # ─────────────────────────────
   deploy:
     name: 🚀 Deploy to Netlify
@@ -57,7 +57,7 @@ jobs:
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
 
   # ─────────────────────────────
-  # 3. NOTIFY TEAMS (FIXED)
+  # NOTIFY (FIXED)
   # ─────────────────────────────
   notify:
     uses: NADUNSANDEEPA/DriveStream-CommonCICD/.github/workflows/common-notify.yml@main
