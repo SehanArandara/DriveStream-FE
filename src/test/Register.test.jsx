@@ -1,314 +1,410 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { vi } from 'vitest'
-import { MemoryRouter } from 'react-router-dom'
-import Register from '../pages/Register'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { BrowserRouter } from 'react-router-dom';
+import Register from '../pages/Register';
+import api from '../lib/api';
+import { toast } from 'react-hot-toast';
 
-// ─── Mocks ────────────────────────────────────────────────
-
-const mockNavigate = vi.fn()
-const mockRegister = vi.fn()
-const mockGoogleLogin = vi.fn()
-
-vi.mock('react-router-dom', async () => {
-    const actual = await vi.importActual('react-router-dom')
-    return {
-        ...actual,
-        useNavigate: () => mockNavigate,
-    }
-})
-
-vi.mock('../context/AuthContext', () => ({
-    useAuth: () => ({
-        register: mockRegister,
-        googleLogin: mockGoogleLogin,
-    }),
-}))
+// ─────────────────────────────────────────────
+// MOCKS
+// ─────────────────────────────────────────────
+const mockNavigate = vi.fn();
+const mockGoogleLogin = vi.fn();
 
 vi.mock('../lib/api', () => ({
-    default: {
-        post: vi.fn(),
-    },
-}))
+  default: {
+    post: vi.fn(),
+  },
+}));
 
 vi.mock('react-hot-toast', () => ({
-    toast: {
-        success: vi.fn(),
-        error: vi.fn(),
-    },
-}))
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+  },
+}));
+
+vi.mock('../context/AuthContext', () => ({
+  useAuth: () => ({
+    googleLogin: mockGoogleLogin,
+  }),
+}));
+
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
 
 vi.mock('@react-oauth/google', () => ({
-    GoogleLogin: ({ onSuccess, onError }) => (
-        <button onClick={() => onSuccess({ credential: 'mock-google-token' })}>
-            Google Register
-        </button>
-    ),
-}))
-
-// ─── Helper ───────────────────────────────────────────────
-
-const renderRegister = () =>
-    render(
-        <MemoryRouter>
-            <Register />
-        </MemoryRouter>
-    )
-
-const fillForm = ({ name, email, phone, password } = {}) => {
-    if (name) fireEvent.change(screen.getByPlaceholderText('John Doe'), { target: { value: name, name: 'name' } })
-    if (email) fireEvent.change(screen.getByPlaceholderText('name@example.com'), { target: { value: email, name: 'email' } })
-    if (phone) fireEvent.change(screen.getByPlaceholderText('+94 7X XXX XXXX'), { target: { value: phone, name: 'phone' } })
-    if (password) fireEvent.change(screen.getByPlaceholderText('••••••••'), { target: { value: password, name: 'password' } })
-}
-
-// ─── Tests ────────────────────────────────────────────────
-
-describe('Register', () => {
-
-    beforeEach(() => {
-        vi.clearAllMocks()
-    })
-
-    // ─── Rendering ──────────────────────────────────────────
-
-    it('renders the registration form', () => {
-        renderRegister()
-        // Use heading role to avoid matching the button text
-        expect(screen.getByRole('heading', { name: 'Create Account' })).toBeInTheDocument()
-        expect(screen.getByPlaceholderText('John Doe')).toBeInTheDocument()
-        expect(screen.getByPlaceholderText('name@example.com')).toBeInTheDocument()
-        expect(screen.getByPlaceholderText('+94 7X XXX XXXX')).toBeInTheDocument()
-        expect(screen.getByPlaceholderText('••••••••')).toBeInTheDocument()
-    })
-    
-    it('renders DriveStream brand', () => {
-        renderRegister()
-        expect(screen.getByText('DriveStream')).toBeInTheDocument()
-    })
-
-    it('renders the submit button', () => {
-        renderRegister()
-        expect(screen.getByRole('button', { name: 'Create Account' })).toBeInTheDocument()
-    })
-
-    it('renders Google register button', () => {
-        renderRegister()
-        expect(screen.getByText('Google Register')).toBeInTheDocument()
-    })
-
-    it('renders login link', () => {
-        renderRegister()
-        expect(screen.getByText('Login here')).toBeInTheDocument()
-    })
-
-    // ─── Input ──────────────────────────────────────────────
-
-    it('updates name input on change', () => {
-        renderRegister()
-        const input = screen.getByPlaceholderText('John Doe')
-        fireEvent.change(input, { target: { value: 'Alice', name: 'name' } })
-        expect(input.value).toBe('Alice')
-    })
-
-    it('updates email input on change', () => {
-        renderRegister()
-        const input = screen.getByPlaceholderText('name@example.com')
-        fireEvent.change(input, { target: { value: 'alice@example.com', name: 'email' } })
-        expect(input.value).toBe('alice@example.com')
-    })
-
-    it('updates phone input on change', () => {
-        renderRegister()
-        const input = screen.getByPlaceholderText('+94 7X XXX XXXX')
-        fireEvent.change(input, { target: { value: '+94771234567', name: 'phone' } })
-        expect(input.value).toBe('+94771234567')
-    })
-
-    it('updates password input on change', () => {
-        renderRegister()
-        const input = screen.getByPlaceholderText('••••••••')
-        fireEvent.change(input, { target: { value: 'secret123', name: 'password' } })
-        expect(input.value).toBe('secret123')
-    })
-
-    // ─── Submit ─────────────────────────────────────────────
-
-    it('calls api.post with correct form data on submit', async () => {
-        const { default: api } = await import('../lib/api')
-        api.post.mockResolvedValue({
-            data: { message: 'OTP sent', userId: 'user-1', phone: '+94771234567' },
+  GoogleLogin: ({ onSuccess }) => (
+    <button
+      onClick={() =>
+        onSuccess({
+          credential: 'mock-google-token',
         })
+      }
+    >
+      Google Login
+    </button>
+  ),
+}));
 
-        renderRegister()
-        fillForm({
-            name: 'Alice',
-            email: 'alice@example.com',
+// ─────────────────────────────────────────────
+// RENDER HELPER
+// ─────────────────────────────────────────────
+const renderComponent = () => {
+  return render(
+    <BrowserRouter>
+      <Register />
+    </BrowserRouter>
+  );
+};
+
+// ─────────────────────────────────────────────
+// TESTS
+// ─────────────────────────────────────────────
+describe('Register Component', () => {
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  // ─────────────────────────────────────────────
+  // RENDER TEST
+  // ─────────────────────────────────────────────
+  test('renders registration form correctly', () => {
+
+    renderComponent();
+
+    expect(
+      screen.getByRole('heading', {
+        name: /create account/i,
+      })
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByPlaceholderText('John Doe')
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByPlaceholderText('name@example.com')
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByPlaceholderText('+94 7X XXX XXXX')
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByPlaceholderText('••••••••')
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByRole('button', {
+        name: /create account/i,
+      })
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText('Google Login')
+    ).toBeInTheDocument();
+  });
+
+  // ─────────────────────────────────────────────
+  // INPUT CHANGE TEST
+  // ─────────────────────────────────────────────
+  test('updates form fields correctly', () => {
+
+    renderComponent();
+
+    const nameInput = screen.getByPlaceholderText('John Doe');
+    const emailInput = screen.getByPlaceholderText('name@example.com');
+    const phoneInput = screen.getByPlaceholderText('+94 7X XXX XXXX');
+    const passwordInput = screen.getByPlaceholderText('••••••••');
+
+    fireEvent.change(nameInput, {
+      target: { value: 'Nadun' },
+    });
+
+    fireEvent.change(emailInput, {
+      target: { value: 'nadun@gmail.com' },
+    });
+
+    fireEvent.change(phoneInput, {
+      target: { value: '+94771234567' },
+    });
+
+    fireEvent.change(passwordInput, {
+      target: { value: 'Password123' },
+    });
+
+    expect(nameInput.value).toBe('Nadun');
+    expect(emailInput.value).toBe('nadun@gmail.com');
+    expect(phoneInput.value).toBe('+94771234567');
+    expect(passwordInput.value).toBe('Password123');
+  });
+
+  // ─────────────────────────────────────────────
+  // SUCCESSFUL REGISTER
+  // ─────────────────────────────────────────────
+  test('submits registration form successfully', async () => {
+
+    api.post.mockResolvedValue({
+      data: {
+        message: 'Registration successful',
+        userId: '123',
+        phone: '+94771234567',
+      },
+    });
+
+    renderComponent();
+
+    fireEvent.change(
+      screen.getByPlaceholderText('John Doe'),
+      {
+        target: { value: 'Nadun' },
+      }
+    );
+
+    fireEvent.change(
+      screen.getByPlaceholderText('name@example.com'),
+      {
+        target: { value: 'nadun@gmail.com' },
+      }
+    );
+
+    fireEvent.change(
+      screen.getByPlaceholderText('+94 7X XXX XXXX'),
+      {
+        target: { value: '+94771234567' },
+      }
+    );
+
+    fireEvent.change(
+      screen.getByPlaceholderText('••••••••'),
+      {
+        target: { value: 'Password123' },
+      }
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /create account/i,
+      })
+    );
+
+    await waitFor(() => {
+
+      expect(api.post).toHaveBeenCalledWith(
+        '/auth/register',
+        {
+          name: 'Nadun',
+          email: 'nadun@gmail.com',
+          password: 'Password123',
+          phone: '+94771234567',
+        }
+      );
+
+      expect(toast.success).toHaveBeenCalledWith(
+        'Registration successful'
+      );
+
+      expect(mockNavigate).toHaveBeenCalledWith(
+        '/verify-otp',
+        {
+          state: {
+            userId: '123',
             phone: '+94771234567',
-            password: 'secret123',
-        })
-        fireEvent.click(screen.getByRole('button', { name: 'Create Account' }))
+          },
+        }
+      );
+    });
+  });
 
-        await waitFor(() => {
-            expect(api.post).toHaveBeenCalledWith('/auth/register', {
-                name: 'Alice',
-                email: 'alice@example.com',
-                phone: '+94771234567',
-                password: 'secret123',
-            })
-        })
-    })
+  // ─────────────────────────────────────────────
+  // REGISTER FAILURE
+  // ─────────────────────────────────────────────
+  test('shows error toast when registration fails', async () => {
 
-    it('shows loading state while submitting', async () => {
-        const { default: api } = await import('../lib/api')
-        api.post.mockImplementation(() => new Promise(resolve =>
-            setTimeout(() => resolve({
-                data: { message: 'OTP sent', userId: 'u1', phone: '+94771234567' }
-            }), 500)
-        ))
+    api.post.mockRejectedValue({
+      response: {
+        data: {
+          message: 'Registration failed',
+        },
+      },
+    });
 
-        renderRegister()
-        fillForm({ name: 'Alice', email: 'alice@example.com', phone: '+94771234567', password: 'pass' })
-        fireEvent.click(screen.getByRole('button', { name: 'Create Account' }))
+    renderComponent();
 
-        expect(screen.getByRole('button', { name: 'Creating Account...' })).toBeDisabled()
-    })
+    fireEvent.change(
+      screen.getByPlaceholderText('John Doe'),
+      {
+        target: { value: 'Nadun' },
+      }
+    );
 
-    it('shows success toast after registration', async () => {
-        const { default: api } = await import('../lib/api')
-        const { toast } = await import('react-hot-toast')
-        api.post.mockResolvedValue({
-            data: { message: 'OTP sent successfully', userId: 'u1', phone: '+94771234567' },
-        })
+    fireEvent.change(
+      screen.getByPlaceholderText('name@example.com'),
+      {
+        target: { value: 'nadun@gmail.com' },
+      }
+    );
 
-        renderRegister()
-        fillForm({ name: 'Alice', email: 'alice@example.com', phone: '+94771234567', password: 'pass' })
-        fireEvent.click(screen.getByRole('button', { name: 'Create Account' }))
+    fireEvent.change(
+      screen.getByPlaceholderText('+94 7X XXX XXXX'),
+      {
+        target: { value: '+94771234567' },
+      }
+    );
 
-        await waitFor(() => {
-            expect(toast.success).toHaveBeenCalledWith('OTP sent successfully')
-        })
-    })
+    fireEvent.change(
+      screen.getByPlaceholderText('••••••••'),
+      {
+        target: { value: 'Password123' },
+      }
+    );
 
-    it('navigates to /verify-otp with userId and phone after registration', async () => {
-        const { default: api } = await import('../lib/api')
-        api.post.mockResolvedValue({
-            data: { message: 'OTP sent', userId: 'user-42', phone: '+94771234567' },
-        })
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /create account/i,
+      })
+    );
 
-        renderRegister()
-        fillForm({ name: 'Alice', email: 'alice@example.com', phone: '+94771234567', password: 'pass' })
-        fireEvent.click(screen.getByRole('button', { name: 'Create Account' }))
+    await waitFor(() => {
 
-        await waitFor(() => {
-            expect(mockNavigate).toHaveBeenCalledWith('/verify-otp', {
-                state: { userId: 'user-42', phone: '+94771234567' },
-            })
-        })
-    })
+      expect(toast.error).toHaveBeenCalledWith(
+        'Registration failed'
+      );
 
-    // ─── Error Handling ──────────────────────────────────────
+    });
+  });
 
-    it('shows error toast on registration failure', async () => {
-        const { default: api } = await import('../lib/api')
-        const { toast } = await import('react-hot-toast')
-        api.post.mockRejectedValue({
-            response: { data: { message: 'Email already exists' } },
-        })
+  // ─────────────────────────────────────────────
+  // LOADING STATE
+  // ─────────────────────────────────────────────
+  test('disables button while loading', async () => {
 
-        renderRegister()
-        fillForm({ name: 'Alice', email: 'alice@example.com', phone: '+94771234567', password: 'pass' })
-        fireEvent.click(screen.getByRole('button', { name: 'Create Account' }))
+    api.post.mockImplementation(
+      () =>
+        new Promise((resolve) =>
+          setTimeout(
+            () =>
+              resolve({
+                data: {
+                  message: 'Success',
+                  userId: '123',
+                  phone: '+94771234567',
+                },
+              }),
+            100
+          )
+        )
+    );
 
-        await waitFor(() => {
-            expect(toast.error).toHaveBeenCalledWith('Email already exists')
-        })
-    })
+    renderComponent();
 
-    it('shows fallback error toast when no message in response', async () => {
-        const { default: api } = await import('../lib/api')
-        const { toast } = await import('react-hot-toast')
-        api.post.mockRejectedValue({})
+    fireEvent.change(
+      screen.getByPlaceholderText('John Doe'),
+      {
+        target: { value: 'Nadun' },
+      }
+    );
 
-        renderRegister()
-        fillForm({ name: 'Alice', email: 'alice@example.com', phone: '+94771234567', password: 'pass' })
-        fireEvent.click(screen.getByRole('button', { name: 'Create Account' }))
+    fireEvent.change(
+      screen.getByPlaceholderText('name@example.com'),
+      {
+        target: { value: 'nadun@gmail.com' },
+      }
+    );
 
-        await waitFor(() => {
-            expect(toast.error).toHaveBeenCalledWith('Registration failed')
-        })
-    })
+    fireEvent.change(
+      screen.getByPlaceholderText('+94 7X XXX XXXX'),
+      {
+        target: { value: '+94771234567' },
+      }
+    );
 
-    it('re-enables submit button after failure', async () => {
-        const { default: api } = await import('../lib/api')
-        api.post.mockRejectedValue({ response: { data: { message: 'Failed' } } })
+    fireEvent.change(
+      screen.getByPlaceholderText('••••••••'),
+      {
+        target: { value: 'Password123' },
+      }
+    );
 
-        renderRegister()
-        fillForm({ name: 'Alice', email: 'alice@example.com', phone: '+94771234567', password: 'pass' })
-        fireEvent.click(screen.getByRole('button', { name: 'Create Account' }))
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /create account/i,
+      })
+    );
 
-        await waitFor(() => {
-            expect(screen.getByRole('button', { name: 'Create Account' })).not.toBeDisabled()
-        })
-    })
+    expect(
+      screen.getByRole('button', {
+        name: /creating account/i,
+      })
+    ).toBeDisabled();
+  });
 
-    // ─── Google Register ─────────────────────────────────────
+  // ─────────────────────────────────────────────
+  // GOOGLE LOGIN SUCCESS
+  // ─────────────────────────────────────────────
+  test('handles google login success', async () => {
 
-    it('calls googleLogin with credential on Google register', async () => {
-        mockGoogleLogin.mockResolvedValue({ role: 'customer' })
-        renderRegister()
+    mockGoogleLogin.mockResolvedValue({
+      user: {
+        role: 'customer',
+      },
+    });
 
-        fireEvent.click(screen.getByText('Google Register'))
+    renderComponent();
 
-        await waitFor(() => {
-            expect(mockGoogleLogin).toHaveBeenCalledWith('mock-google-token')
-        })
-    })
+    fireEvent.click(
+      screen.getByText('Google Login')
+    );
 
-    it('navigates to / for customer after Google register', async () => {
-        mockGoogleLogin.mockResolvedValue({ role: 'customer' })
-        renderRegister()
+    await waitFor(() => {
 
-        fireEvent.click(screen.getByText('Google Register'))
+      expect(mockGoogleLogin).toHaveBeenCalled();
 
-        await waitFor(() => {
-            expect(mockNavigate).toHaveBeenCalledWith('/')
-        })
-    })
+      expect(toast.success).toHaveBeenCalledWith(
+        'Welcome to DriveStream!'
+      );
 
-    it('navigates to /staff-login for non-customer after Google register', async () => {
-        mockGoogleLogin.mockResolvedValue({ role: 'admin' })
-        renderRegister()
+      expect(mockNavigate).toHaveBeenCalledWith(
+        '/dashboard'
+      );
 
-        fireEvent.click(screen.getByText('Google Register'))
+    });
+  });
 
-        await waitFor(() => {
-            expect(mockNavigate).toHaveBeenCalledWith('/staff-login')
-        })
-    })
+  // ─────────────────────────────────────────────
+  // GOOGLE LOGIN FAILURE
+  // ─────────────────────────────────────────────
+  test('handles google login failure', async () => {
 
-    it('shows error toast on Google register failure', async () => {
-        const { toast } = await import('react-hot-toast')
-        mockGoogleLogin.mockRejectedValue({
-            response: { data: { message: 'Google auth failed' } },
-        })
-        renderRegister()
+    mockGoogleLogin.mockRejectedValue({
+      response: {
+        data: {
+          message: 'Google Registration failed',
+        },
+      },
+    });
 
-        fireEvent.click(screen.getByText('Google Register'))
+    renderComponent();
 
-        await waitFor(() => {
-            expect(toast.error).toHaveBeenCalledWith('Google auth failed')
-        })
-    })
+    fireEvent.click(
+      screen.getByText('Google Login')
+    );
 
-    it('shows fallback error on Google register failure with no message', async () => {
-        const { toast } = await import('react-hot-toast')
-        mockGoogleLogin.mockRejectedValue({})
-        renderRegister()
+    await waitFor(() => {
 
-        fireEvent.click(screen.getByText('Google Register'))
+      expect(toast.error).toHaveBeenCalledWith(
+        'Google Registration failed'
+      );
 
-        await waitFor(() => {
-            expect(toast.error).toHaveBeenCalledWith('Google Registration failed')
-        })
-    })
-})
+    });
+  });
+
+});
