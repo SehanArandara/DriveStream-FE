@@ -216,24 +216,47 @@ jobs:
   notify:
     name: 📢 Notify Teams
     runs-on: ubuntu-latest
-    needs: deploy
+    needs:
+      - install
+      - lint
+      - test
+      - build
+      - docker
+      - approval
+      - deploy
+
     if: always()
 
     steps:
-      - name: Set status info
+      - name: Set Deployment Status
         id: status
         run: |
+
           if [ "${{ needs.deploy.result }}" == "success" ]; then
             echo "emoji=✅" >> $GITHUB_OUTPUT
-            echo "title=Deployment Successful" >> $GITHUB_OUTPUT
+            echo "title=Production Deployment Successful" >> $GITHUB_OUTPUT
             echo "color=Good" >> $GITHUB_OUTPUT
-            echo "message=The app is live and running on production." >> $GITHUB_OUTPUT
+            echo "message=DriveStream has been deployed successfully to production." >> $GITHUB_OUTPUT
+            echo "status=SUCCESS" >> $GITHUB_OUTPUT
           else
             echo "emoji=❌" >> $GITHUB_OUTPUT
-            echo "title=Deployment Failed" >> $GITHUB_OUTPUT
+            echo "title=Production Deployment Failed" >> $GITHUB_OUTPUT
             echo "color=Attention" >> $GITHUB_OUTPUT
-            echo "message=Something went wrong. Please check the logs immediately." >> $GITHUB_OUTPUT
+            echo "message=Deployment failed. Immediate attention is required." >> $GITHUB_OUTPUT
+            echo "status=FAILED" >> $GITHUB_OUTPUT
           fi
+
+      - name: Generate Metadata
+        id: meta
+        run: |
+
+          echo "short_sha=$(echo '${{ github.sha }}' | cut -c1-7)" >> $GITHUB_OUTPUT
+
+          echo "sl_time=$(TZ='Asia/Colombo' date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_OUTPUT
+
+          echo "workflow_url=https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> $GITHUB_OUTPUT
+
+          echo "commit_url=https://github.com/${{ github.repository }}/commit/${{ github.sha }}" >> $GITHUB_OUTPUT
 
       - name: Send Teams Adaptive Card
         run: |
@@ -248,14 +271,18 @@ jobs:
                   "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
                   "type": "AdaptiveCard",
                   "version": "1.4",
+
                   "body": [
+
                     {
                       "type": "Container",
                       "style": "${{ steps.status.outputs.color }}",
+                      "bleed": true,
                       "items": [
                         {
                           "type": "ColumnSet",
                           "columns": [
+
                             {
                               "type": "Column",
                               "width": "auto",
@@ -263,11 +290,12 @@ jobs:
                                 {
                                   "type": "Image",
                                   "url": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
-                                  "size": "Small",
+                                  "size": "Medium",
                                   "style": "Person"
                                 }
                               ]
                             },
+
                             {
                               "type": "Column",
                               "width": "stretch",
@@ -282,61 +310,110 @@ jobs:
                                 {
                                   "type": "TextBlock",
                                   "text": "${{ steps.status.outputs.message }}",
-                                  "isSubtle": true,
-                                  "wrap": true
+                                  "spacing": "Small",
+                                  "wrap": true,
+                                  "isSubtle": true
                                 }
                               ]
                             }
+
                           ]
                         }
                       ]
                     },
+
+                    {
+                      "type": "TextBlock",
+                      "text": "📊 Pipeline Information",
+                      "weight": "Bolder",
+                      "size": "Medium",
+                      "spacing": "Medium"
+                    },
+
                     {
                       "type": "FactSet",
                       "facts": [
+
                         {
                           "title": "📦 Repository",
                           "value": "${{ github.repository }}"
                         },
+
                         {
                           "title": "🌿 Branch",
                           "value": "${{ github.ref_name }}"
                         },
+
                         {
-                          "title": "👤 Triggered by",
+                          "title": "👤 Triggered By",
                           "value": "${{ github.actor }}"
                         },
+
                         {
-                          "title": "📝 Commit",
-                          "value": "${{ github.event.head_commit.message }}"
+                          "title": "🔄 Workflow",
+                          "value": "${{ github.workflow }}"
                         },
+
                         {
-                          "title": "🔢 Run number",
+                          "title": "🔢 Run Number",
                           "value": "#${{ github.run_number }}"
                         },
+
                         {
-                          "title": "🕐 Time (SL)",
-                          "value": "'"$(TZ='Asia/Colombo' date '+%Y-%m-%d %H:%M:%S')"'"
+                          "title": "📌 Status",
+                          "value": "${{ steps.status.outputs.status }}"
+                        },
+
+                        {
+                          "title": "📝 Commit Message",
+                          "value": "${{ github.event.head_commit.message }}"
+                        },
+
+                        {
+                          "title": "🔖 Commit SHA",
+                          "value": "${{ steps.meta.outputs.short_sha }}"
+                        },
+
+                        {
+                          "title": "🐳 Docker Image",
+                          "value": "${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest"
+                        },
+
+                        {
+                          "title": "🚀 Environment",
+                          "value": "Production"
+                        },
+
+                        {
+                          "title": "🕐 Sri Lanka Time",
+                          "value": "${{ steps.meta.outputs.sl_time }}"
                         }
+
                       ]
                     }
+
                   ],
+
                   "actions": [
+
                     {
                       "type": "Action.OpenUrl",
-                      "title": "🔍 View Run Logs",
-                      "url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                      "title": "🔍 View Workflow Logs",
+                      "url": "${{ steps.meta.outputs.workflow_url }}"
                     },
+
                     {
                       "type": "Action.OpenUrl",
-                      "title": "🌐 Open Live Site",
+                      "title": "🌐 Open Live Application",
                       "url": "https://drivestreams.netlify.app"
                     },
+
                     {
                       "type": "Action.OpenUrl",
                       "title": "📂 View Commit",
-                      "url": "https://github.com/${{ github.repository }}/commit/${{ github.sha }}"
+                      "url": "${{ steps.meta.outputs.commit_url }}"
                     }
+
                   ]
                 }
               }
