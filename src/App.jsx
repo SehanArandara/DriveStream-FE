@@ -70,9 +70,17 @@ const DashboardLayout = ({ children }) => {
           </div>
         </main>
       </div>
-      <ChatBotWidget />
     </div>
   );
+};
+
+// Show DriveBot only to: public visitors (no user) and customers.
+// Hidden for admin and technician roles — they have internal tools.
+const ChatBotGate = () => {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (user && user.role !== 'customer') return null;
+  return <ChatBotWidget />;
 };
 
 function App() {
@@ -168,6 +176,7 @@ function App() {
 
           <Route path="*" element={<Navigate to="/dashboard" />} />
         </Routes>
+        <ChatBotGate />
         <Toaster position="top-right" />
       </Router>
     </AuthProvider>
