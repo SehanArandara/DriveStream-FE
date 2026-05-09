@@ -20,7 +20,7 @@ const WelcomePortal = () => {
             <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-6 text-primary group-hover:bg-primary group-hover:text-white transition-colors duration-300">
               <User size={40} />
             </div>
-            <h3 className="text-2xl font-bold text-slate-900 mb-3">Customer Portal</h3>
+            <h3 className="text-2xl font-bold text-slate-900 mb-3">Customer Portal </h3>
             <p className="text-slate-500 mb-8 leading-relaxed">
               Book maintenance, track real-time repairs, and manage your vehicle history with ease.
             </p>

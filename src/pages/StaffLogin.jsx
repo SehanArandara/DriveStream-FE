@@ -48,7 +48,7 @@ const StaffLogin = () => {
             <ShieldCheck size={32} />
             <Wrench size={32} />
           </div>
-          <h1>Staff Portal....</h1>
+          <h1>Staff Portal</h1>
           <p>Internal Operations Login</p>
         </div>
 
